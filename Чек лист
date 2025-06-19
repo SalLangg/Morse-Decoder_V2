@@ -95,7 +95,7 @@ WEIGHT_DECAY = 1e-4
 
 ----6) Прочитал что BatchNorm2d плохо работает при маленьком батче
 
-----7) Какие еще есть варианты 
+----7) Наткнулся на статью про SE блоки как аналог Attention но для CNN
 Squeeze-and-Excitation (SE) блок в CNN
 class SEBlock(nn.Module):
     def __init__(self, channels, reduction=16):
@@ -113,5 +113,54 @@ class SEBlock(nn.Module):
         squeezed = self.squeeze(x).view(B, C)  # [B, C]
         weights = self.excitation(squeezed).view(B, C, 1, 1)  # [B, C, 1, 1]
         return x * weights  # Масштабируем каналы
+    
+    -> Слано немного лучше но этого мало
+
+    7.1) Добавил mha с ключами(как понял, без ключеной это просто self attention а он как
+    как уже выяснил не подходит) - вроде стало лучше но на 22+ эпуже видно переобчение
+
+    7.2) Пробую жестко порезать модель + добавить еще dropout
+    FIRST_FE_COUNT = 8  # было 16
+    SECOND_FE_COUNT = 16  # было 32
+    THIRD_FE_COUNT = 16  # было 32
+    QAD_FE_COUNT = 16  # было 32
+    GRU_HIDEN = 256  # было 512
+
+    WEIGHT_DECAY = 0.001 #было 0.0001
+
+    FREQ_MASK = 30
+    TIME_MASK = 40
+  
+
+    class SEBlock(nn.Module):
+    def __init__(self, channels, reduction=4):
+
+    7.3) Поднимаем гиперпараметры
+        FIRST_FE_COUNT = 64
+        SECOND_FE_COUNT = 128
+        THIRD_FE_COUNT = 128
+        QAD_FE_COUNT = 128
+        PADDING = 'same'
+        MAXPOOL_KERNEL = 2
+        KERTNEL_SIZE = 3
+        NERON_COUNT = 128
+        GRU_HIDEN = 512
+
+        Такие изменения нагрузили видеокарту, хотя до этого она вообще не напрягалась.
+        Попробовал num_workers=4, pin_memory=True в даталоадере, запуск первого блока просто помер. 
+        Причины не известны
+
+        Попробую записать спектрограммы заранее. Было лень писать отдельные трансформации для 
+        трейн тест валидацияЮ так что написал все скопом, а аугментация уже налету делаю
+        Это тоже не помогло 
+
+        FIRST_FE_COUNT = 32
+        SECOND_FE_COUNT = 64
+        THIRD_FE_COUNT = 64
+        QAD_FE_COUNT = 64 
+        уже запустилось
+
+        Получил молель 0.8 качества на kagle. но этого явно мало. Мб если бы смог запустить прошлый вариан было бы лучше.
+        А так буду пилить странсформер
 
 -----8) Сделать transformer 
