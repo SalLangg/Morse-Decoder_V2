@@ -5,6 +5,7 @@ tqdm==4.67.1
 matplotlib==3.10.1
 librosa==0.11.0
 Levenshtein==0.27.1
+pydantic==2.11.5
 
 # Глубокое обучение
 --extra-index-url https://download.pytorch.org/whl/cu128

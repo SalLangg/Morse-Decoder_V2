@@ -164,3 +164,122 @@ class SEBlock(nn.Module):
         А так буду пилить странсформер
 
 -----8) Сделать transformer 
+    по идее то что я писал до жтого было енкодером траснформера. 
+    Навреное я могу переписать его в полноценный енкодер и бавить декодер, на вход которого придут 
+    выходные значения тренировочных данных
+
+    seq2seq модель 
+
+
+------9) Оказалось был косяк в декодировании сообщений)))
+
+
+
+    preds = []
+    logits_cpu = logits.cpu()
+    max_inds = torch.argmax(logits_cpu.detach(), dim=2).t().numpy() 
+
+    for ind in max_inds:
+        merged_inds = []
+        prev_idx = None
+        for idx in ind:
+            if idx != blank_label_idx and idx != prev_idx:
+                merged_inds.append(idx)
+            prev_idx = idx
+        text = "".join([int_char_map.get(i, '') for i in merged_inds])
+        preds.append(text)
+
+    return preds
+
+
+    preds = []
+    logits_cpu = logits.cpu() 
+    max_inds = torch.argmax(logits_cpu.detach(), dim=2).t().numpy() # арзмакс по лагитам и преобразование к словарю
+    
+    for ind in max_inds:
+        merged_inds = []
+        for idx in ind:
+            if idx != blank_label_idx: 
+                merged_inds.append(idx)
+        text = "".join([int_char_map.get(i, '?') for i in merged_inds])
+        preds.append(text)
+
+    return preds
+
+-----10) Попробую проверить первую модель что дала 0.89 какое качество бедет если исправить декодировшик
+    Mean accurasu by The Levenshtein in train is : 0.9535349280226777
+    Mean accurasu by The Levenshtein in validate is : 0.9708523424428829
+    По итогу одна из первых моделей без selfatention блоков и MultiheadAttention далла качесто 0.43. Прикольно
+
+    Думаю selfatention для Cnn это хорошая идея а Attention как я и изначально думал тут вообще не нужен так как нет сильной зависимости символов как например в больший предложениях
+
+    но сперва просто попробую поднять гиперпараметры
+        FIRST_FE_COUNT = 32
+        SECOND_FE_COUNT = 64
+        THIRD_FE_COUNT = 64
+        QAD_FE_COUNT = 64
+        PADDING = 'same'
+        MAXPOOL_KERNEL = 2
+        KERTNEL_SIZE = 3
+        NERON_COUNT = 128
+        GRU_HIDEN = 512
+
+        И подниму nn.Dropout(0.5). Как понял для Rnn сетей лучше ставить побольше
+
+
+        === Полуичлось качество хуже
+
+    10.1) попробю те же гипер параметры, но добавлю selfatention для Cnn и 
+    прокину 3 lstm слоя
+    === Ну качаство стало немного хуже. Пока все еще самая базовая модель лучше всего
+
+    10.2) Возможно я сильно сжимаю признаки на сверточном слое. nn.MaxPool2d. НАчальная логика
+    была в том, что временная ось сильно длиннее чем частотная, пожтому сжимал ее сильнее.
+    Но возможно теряю полезные признаки, так как усложнение модели не особо мопагает. В первой верстт
+    был nn.MaxPool2d(2)
+
+    Сейчас я сжимаю в 6 раз. Мб стоит только в 2 раза или вообще не трогать?
+    - Попробую без maxpill и selfatention . stride=(1, 2) -> не трограю временнубю ось вообще
+
+    == На 15 эпохе началось переобчение
+
+    10.3) чуйка подсказывает что проблема в CNN блоке
+    Попробую следующие параметры, что бы скократить признаки, но мешьше чем рашьне      
+    self.net_conv = nn.Sequential(
+            nn.Conv2d(in_channels=1, 
+                      out_channels=FIRST_FE_COUNT, 
+                      kernel_size=KERTNEL_SIZE , stride=1, padding=PADDING),
+            nn.BatchNorm2d(FIRST_FE_COUNT),
+            nn.GELU(),
+            SEBlock(FIRST_FE_COUNT),
+            nn.MaxPool2d(kernel_size=2, stride=2), # [batch, FIRST_FE_COUNT = 16, 64, 178]
+
+            nn.Conv2d(in_channels=FIRST_FE_COUNT, 
+                      out_channels=SECOND_FE_COUNT, 
+                      kernel_size=KERTNEL_SIZE , stride=1, padding=PADDING),
+            nn.BatchNorm2d(SECOND_FE_COUNT),
+            nn.GELU(),
+            SEBlock(SECOND_FE_COUNT),
+            # nn.MaxPool2d(2, 2), #
+
+            nn.Conv2d(in_channels=SECOND_FE_COUNT, 
+                      out_channels=THIRD_FE_COUNT, 
+                      kernel_size=KERTNEL_SIZE , stride=1, padding=PADDING),
+            nn.BatchNorm2d(THIRD_FE_COUNT),
+            nn.GELU(),
+            SEBlock(THIRD_FE_COUNT),
+            # nn.MaxPool2d((2, 2), (2, 2)), 
+
+            nn.Conv2d(in_channels=THIRD_FE_COUNT, 
+                      out_channels=QAD_FE_COUNT, 
+                      kernel_size=KERTNEL_SIZE , stride=1, padding=PADDING),
+            nn.BatchNorm2d(QAD_FE_COUNT),
+            # SEBlock(QAD_FE_COUNT),
+            nn.GELU(),
+            nn.MaxPool2d(kernel_size=2, stride=2) # [batch=32, QAD_FE_COUNT = 32, 32, 89]
+        )
+
+    11) Думаю последнй эксперемент по улучщению качества. Попробую обьеденить в ансамбль 2 модели что дали близкие результаты 0.42 и 0.44
+    ?? У меня в оптимизаторе небыло WEIGHT_DECAY))??
+
+    результат не утешительный 

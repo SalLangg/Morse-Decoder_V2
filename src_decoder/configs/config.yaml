@@ -1,0 +1,31 @@
+data:
+  sample_rate: 8000
+  n_mels: 128
+  n_fft: 400
+  hop_length: 180
+  top_db: 80
+  freq_mask: 15
+  time_mask: 20
+  blank_char: "_"
+
+training:
+  seed: 42
+  batch_size: 32
+  epochs: 70
+  learning_rate: 0.002
+  weight_decay: 0.00001
+  early_stopping_patience: 5
+  lr_patience: 3
+  lr_factor: 0.5
+
+model:
+  first_fe_count: 16
+  second_fe_count: 32
+  third_fe_count: 32
+  quad_fe_count: 32
+  padding: "same"
+  maxpool_kernel: 2
+  kernel_size: 3
+  neuron_count: 128
+  gru_hidden: 256
+  dropout: 0.3
