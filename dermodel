@@ -3,8 +3,8 @@ morse_decoder/
 │   ├── main.ipynb
 ├── src/
 |   ├── configs/                  # Конфигурационные файлы
-|   │   ├── base.yaml             # Основные параметры
-|   │   └── model.yaml  
+|   │   ├── config.yaml             # Основные параметры
+|   │   ├── config.py           # Основные параметры
 │   ├── data/                 
 │   │   ├── dataset.py        # Класс Dataset
 │   │   └── preprocessing.py  # Препроцессинг(опционально) - выгрузка спектрограмм на диск 

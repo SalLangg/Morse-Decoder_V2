@@ -1,24 +1,31 @@
 data:
-  sample_rate: 8000
-  n_mels: 128
-  n_fft: 400
-  hop_length: 180
-  top_db: 80
-  freq_mask: 15
-  time_mask: 20
-  blank_char: "_"
-
-training:
+  sample_rate: 8000                         # Частота дискретизации
+  n_mels: 128                               # Количество Mel-фильтров
+  n_fft: 400                                # Размер окна FFT
+  hop_length: 180                           # Шаг между FFT окнами
+  top_db: 80                                # Максимальная громкость в dB
+  freq_mask: 15                             # FrequencyMasking спектрограмм
+  time_mask: 20                             # TimeMasking спектрограмм
+  blank_char: "_"                           # Символ CTC blank
+  audio_dir: "morse_dataset/morse_dataset"  # Директория с аудиофайлами
+  audio_save_dir: "morse_dataset/morse_dataset"   # Директория для сохраниниея загруженых аудиофайлов
+  train_csv: "morse_dataset/train.csv"      # Путь к тренировочным данным
+  test_csv: "morse_dataset/test.csv"        # Путь к тестовым данным
+  val_size: 0.15                            # Размер валидационной выборки
+  batch_size: 64
   seed: 42
-  batch_size: 32
+  
+
+model:
+  num_classes: 45
   epochs: 70
-  learning_rate: 0.002
+
+  lr: 0.002
   weight_decay: 0.00001
   early_stopping_patience: 5
   lr_patience: 3
   lr_factor: 0.5
 
-model:
   first_fe_count: 16
   second_fe_count: 32
   third_fe_count: 32
@@ -29,3 +36,5 @@ model:
   neuron_count: 128
   gru_hidden: 256
   dropout: 0.3
+
+  saved_models_dir: "src_data/saved_models"
