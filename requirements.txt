@@ -12,6 +12,7 @@ pydantic==2.11.5
 torch
 torchvision
 torchaudio
+tensorboard
 transformers[torch]
 
 # Дополнительные инструменты

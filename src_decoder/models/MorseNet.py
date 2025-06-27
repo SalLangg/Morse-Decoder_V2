@@ -7,9 +7,9 @@ import torch.nn as nn
 import torch.optim as optim
 
 from typing import Union, Tuple, Dict
-from src_decoder.configs import config, Config
+from src_decoder.configs.config import Config
 from torch.utils.tensorboard import SummaryWriter
-from BaseModel import BaseModel
+from src_decoder.models.BaseModel import BaseModel
 from torch.utils.data import Dataset, DataLoader
 
 class MorseNet(BaseModel, nn.Module):

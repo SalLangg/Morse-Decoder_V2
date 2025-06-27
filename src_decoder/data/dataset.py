@@ -4,7 +4,7 @@ from torchaudio import transforms
 from torch import nn
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
-from src_decoder.configs import config, Config
+from src_decoder.configs.config import Config
 from sklearn.model_selection import train_test_split
 from pathlib import Path
 from typing import Union, Literal

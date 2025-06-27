@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 import pandas as pd
 from fastapi import APIRouter
+from typing import Union, Tuple, Dict
+from fastapi import APIRouter, HTTPException, Form, File, UploadFile
 
 import gdown
 import zipfile
@@ -65,14 +67,19 @@ async def load(link: str = 'https://drive.google.com/file/d/1JuWfEGOHMiV6n934aBW
 
     zip_location.unlink('src_data/data_to_treaning/morse_dataset.zip')
     
-
-@router_training.post("/predict")
-async def predict(audio_path: str):
+@router_training.post("/fit_inferencet")
+async def fit_inference(audio_path: str):
     dataset = dataset.setup_data(audio_path)
     dataloader = data_to_inference(dataset, config=conf)
 
 @router_training.post("/fit")
-async def fir(audio_path: pd.DataFrame):
+async def fir(audio_path):
+    if not isinstance(audio_path, pd.DataFrame):
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error loading file: {str(e)}"
+        )
     dataset = dataset.setup_data(audio_path)
     dataloader = data_to_training(dataset, config=conf)
+    
     
