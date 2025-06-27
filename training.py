@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 import pandas as pd
+from fastapi import APIRouter
+
+import gdown
+import zipfile
 
 import torch
 import torchaudio
@@ -10,7 +14,12 @@ from src_decoder.configs import config
 from src_decoder.data.dataset import MosreDataset, data_to_inference, data_to_training
 from src_decoder.models.MorseNet import MorseNet
 
-app = FastAPI()
+router_training = APIRouter(
+    prefix="/ML_training",
+    tags=["ML_training"],
+    responses={404: {"description": "Not found"}}
+)
+
 conf = None
 model = None
 dataset = None
@@ -24,20 +33,45 @@ async def lifespan(app: FastAPI):
     only a light init a data.
     """
     global model, dataset, conf
-    conf = config.load_config(base=True)
+    conf = config.load_config(base=False)
     model = MorseNet(config=conf)
-    model.load()
-    dataset = MosreDataset(w_type='inference', 
+    dataset = MosreDataset(w_type='training', 
                            config=conf, 
                            is_validation=False)
     yield
 
-@app.post("/predict")
+@router_training.post("/load_{model_name}", summary='Load model')
+async def load(model_name: str):
+    """
+    Loading model by name
+    """
+    model.load(name=model_name)
+
+@router_training.put("/loading_data", summary='Loading data files')
+async def load(link: str = 'https://drive.google.com/file/d/1JuWfEGOHMiV6n934aBWiHocZhtRmyVG-/view?usp=sharing'):
+    """Files loading with google drive by link
+    
+    Args:
+        link: str. Link to loading dataset. The default value is download the prepared data.
+    """
+    url = link
+    output_path = 'src_data/data_to_treaning'
+    gdown.download(url, output_path, quiet=False, fuzzy=True)
+    
+    zip_location = 'src_data/data_to_treaning/morse_dataset.zip'
+ 
+    with zipfile.ZipFile(zip_location, 'r') as zip_ref:
+        zip_ref.extractall()
+
+    zip_location.unlink('src_data/data_to_treaning/morse_dataset.zip')
+    
+
+@router_training.post("/predict")
 async def predict(audio_path: str):
     dataset = dataset.setup_data(audio_path)
     dataloader = data_to_inference(dataset, config=conf)
 
-@app.post("/fit")
+@router_training.post("/fit")
 async def fir(audio_path: pd.DataFrame):
     dataset = dataset.setup_data(audio_path)
     dataloader = data_to_training(dataset, config=conf)

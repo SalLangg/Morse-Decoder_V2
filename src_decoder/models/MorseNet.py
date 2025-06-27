@@ -258,10 +258,10 @@ class MorseNet(BaseModel, nn.Module):
             #===== Information about the training step and loss data =====
             current_lr = self._optimizer.param_groups[0]['lr']
             if current_lr <= 1e-6:
-                print('Learning rate достиг минимума 1e-6, остановка обучения')
+                print('The learning rate has reached a minimum of 1e-6, the training has stopped')
                 break
-                        # Логирование в TensorBoard
 
+            # Логирование в TensorBoard
             self.writer.add_scalar('Loss/train', train_loss, epoch)
             self.writer.add_scalar('Loss/val', total_val, epoch)
             self.writer.add_scalar('Learning Rate', current_lr, epoch)
@@ -315,7 +315,7 @@ class MorseNet(BaseModel, nn.Module):
         # print(f'Mean accurasu by The Levenshtein in validate is : {mean_acc_val}')
 
 
-    def predict(self, data: np.ndarray) -> str:
+    def predict(self, data: DataLoader) -> str:
         """Make prediction for audiofile"""
         with torch.no_grad():
             for loader in data:
