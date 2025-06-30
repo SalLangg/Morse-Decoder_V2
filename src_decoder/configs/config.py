@@ -55,11 +55,11 @@ class Config(BaseModel):
 
     blank_char: str = '_'
     morsealph: str = ' АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ1234567890#'
-    vocab_list: str = morsealph + blank_char
+    vocab_list: str = sorted(morsealph) + [blank_char]
     num_classes: PositiveInt = len(vocab_list)
     int_to_char: dict = dict(enumerate(vocab_list))
     char_to_int: dict = {char:enum for enum, char in int_to_char .items()}
-    blaknk_ind: PositiveInt = char_to_int[blank_char]
+    blank_ind: PositiveInt = char_to_int[blank_char]
 
 
 def load_config(config_path: str = 'config.yaml', base=False) -> Config:

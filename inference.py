@@ -21,12 +21,16 @@ router_inference = APIRouter(
     responses={404: {"description": "Not found"}}
 )
 
-LOAD_AUDIO_DIR = f'src_data/loaded_audio'
+LOAD_AUDIO_DIR = Path('src_data/loaded_audio')
 
-conf = None
-model = None
-dataset = None
-audio_path = None
+class TreaningStartup():
+    def __init__(self):
+        self.conf = None
+        self.model = None
+        self.dataset = None
+        self.audio_path = None
+
+test_startup = TreaningStartup()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,26 +40,27 @@ async def lifespan(app: FastAPI):
     Heavy initialization MosreDataset only on start. When requested, 
     only a light init a data.
     """
-    global model, dataset, conf
-    conf = config.load_config(base=True)
-    model = MorseNet(config=conf)
-    model.load()
-    model.eval()
-    dataset = MosreDataset(w_type='inference', 
-                           config=conf, 
+    test_startup.conf = config.load_config(base=True)
+    test_startup.model = MorseNet(config=test_startup.conf)
+    test_startup.model.load()
+    test_startup.model.eval()
+    test_startup.dataset = MosreDataset(w_type='inference', 
+                           config=test_startup.conf, 
                            is_validation=False)
+    
+    total_params = sum(p.numel() for p in test_startup.model.parameters() if p.requires_grad)    
+    print(f'\nMorseNet - инициалицация модели. Число обучаемых параметров: {total_params:,}')
     yield
 
 
 @router_inference.post("/load", summary="Load audiofile")
 async def load_audio(file: UploadFile = File(...)):
     """
-    Upload a file for training the models
+    Upload a file for training the models to server
     """
-    global audio_path
     try:
         audio_path = Path.joinpath(LOAD_AUDIO_DIR, file.filename)
-
+        test_startup.audio_path = audio_path
         if audio_path.exists():
             audio_path.unlink()
         
@@ -77,36 +82,38 @@ async def load_audio(file: UploadFile = File(...)):
         )
 
 
-@router_inference.delete("/delete_{file_name}", summary="Delete file")
-async def delet_file(file_name: str):
-    """
-    Delete file by name
-    """
-    try:
-        file_location = Path.joinpath(LOAD_AUDIO_DIR, file_name)
-        file_location.unlink()
+# @router_inference.delete("/delete_{file_name}", summary="Delete file")
+# async def delet_file(file_name: str):
+#     """
+#     Delete file by name
+#     """
+#     try:
+#         file_location = Path.joinpath(LOAD_AUDIO_DIR, file_name)
+#         file_location.unlink()
         
-        return JSONResponse(
-            status_code=200,
-            content={"message": "File deleted successfully", 
-                     "file name": file_name, 
-                     "path": str(file_location)}
-        )
+#         return JSONResponse(
+#             status_code=200,
+#             content={"message": "File deleted successfully", 
+#                      "file name": file_name, 
+#                      "path": str(file_location)}
+#         )
     
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error deleting file: {str(e)}"
-        )
+#     except Exception as e:
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"Error deleting file: {str(e)}"
+#         )
     
 
 @router_inference.delete("/delete_all", summary="Delete all files")
 async def delet_file():
     """
-    Delete all files
+    Delete all loaded files
     """
+    print(LOAD_AUDIO_DIR)
     try:
-        files_to_del = Path.joinpath(LOAD_AUDIO_DIR).iterdir()
+        files_to_del = LOAD_AUDIO_DIR.iterdir()
+        print(files_to_del)
         file_names = []
         for file in files_to_del:
             file_names.append(file.name)
@@ -127,6 +134,8 @@ async def delet_file():
 
 @router_inference.post("/predict")
 async def predict():
+    audio_path = test_startup.audio_path
+    
     if audio_path is None:
         raise HTTPException(
             status_code=400,
@@ -140,14 +149,15 @@ async def predict():
         )
     
     try:
-        dataset = dataset.setup_data(audio_path)
-        dataloader = data_to_inference(dataset, config=conf)
-
-        return model.predict(dataloader)
+        dataloader = data_to_inference(data=audio_path, 
+                                       dataset=test_startup.dataset, 
+                                       config=test_startup.conf)
+        # print(next(iter(dataloader)))
+        return test_startup.model.predict(dataloader)
     
-    except Exception as e:
+    except Exception as ex:
         raise HTTPException(
             status_code=500,
-            detail=f"Prediction failed: {str(e)}"
+            detail=f"Prediction failed: {str(ex)}"
         )
     

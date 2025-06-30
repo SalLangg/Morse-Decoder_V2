@@ -8,13 +8,10 @@ from torch.utils.tensorboard import SummaryWriter
 
 class BaseModel(ABC):
     """Abstract base class for models"""
-    def __init__(self, save_patch):
-        self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
     @property
     def device(self) -> torch.device:
         """Get the devicethe model"""
-        return self._device
+        return torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     @property
     def name(self) -> str:

@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from src_decoder.models.BaseModel import BaseModel
 from torch.utils.data import Dataset, DataLoader
 
-class MorseNet(BaseModel, nn.Module):
+class MorseNet(nn.Module, BaseModel):
     def __init__(self, config: Config, name_to_save=None, name_to_load='MorseNet'):
         super().__init__()
         """
@@ -38,9 +38,12 @@ class MorseNet(BaseModel, nn.Module):
 
         self.n_mels = self.conf.data.n_mels
         self.blank = self.conf.blank_char
+        self.blank_ind = self.conf.blank_ind
         self.int_to_char = self.conf.int_to_char
         self.conf = self.conf.model
 
+        self.lr = self.conf.lr
+        
         self.name_to_save = name_to_save
         
         self.name_to_load = name_to_load
@@ -87,12 +90,13 @@ class MorseNet(BaseModel, nn.Module):
             dummy_input = torch.randn(1, 1, self.n_mels, 356)
             cnn_out = self.net_conv(dummy_input)
             self.cnn_output_features = cnn_out.shape[1] * cnn_out.shape[2]
-        
+
+        print(f'CNN размерность выхода: {cnn_out.shape}'); 
+        print(f'CNN число фичей: {self.cnn_output_features}')
         # ===== Projection before RNN =====
-        self.projection = nn.Sequential(
-            nn.Linear(self.cnn_output_features, self.n_mels * 2),
-            nn.GELU()
-        )
+
+        self.layer1 = nn.Linear(self.cnn_output_features, self.n_mels*2); 
+        self.gelu = nn.GELU()
         
         # ===== RNN =====
         self.rnn = nn.LSTM(
@@ -105,14 +109,10 @@ class MorseNet(BaseModel, nn.Module):
         )
         
         # ===== Classifier =====
-        self.classifier = nn.Sequential(
-            nn.LayerNorm(self.conf.gru_hidden * 2),
-            nn.Dropout(self.conf.dropout),
-            nn.Linear(self.conf.gru_hidden * 2, self.conf.num_classes)
-        )
+        self.layer_norm = nn.LayerNorm(self.conf.gru_hidden * 2)      
+        self.dropout = nn.Dropout(self.conf.dropout)   
+        self.layer2 = nn.Linear(self.conf.gru_hidden * 2, self.conf.num_classes)  
 
-        self.lr = self.conf.lr
-        self.blank = self.conf.blank
         self._optimazer = optim.Adam(params=self.parameters(), lr=self.lr)
         self._scheduler = optim.lr_scheduler.ReduceLROnPlateau(self._optimazer, 
                                                                mode='min', 
@@ -128,7 +128,7 @@ class MorseNet(BaseModel, nn.Module):
         self._scheduler = scheduler
         self._loss_func = loss_func
 
-    def __ctc_decoder(logits, int_char_map, blank_label_idx) -> str:
+    def __ctc_decoder(self, logits, int_char_map, blank_label_idx) -> str:
         preds = []
         logits_cpu = logits.cpu()
         max_inds = torch.argmax(logits_cpu.detach(), dim=2).t().numpy()
@@ -152,16 +152,20 @@ class MorseNet(BaseModel, nn.Module):
         # ===== Prepare for RNN =====
         batch, channels, reduced_mels, reduced_time = x.shape
         x = x.permute(0, 3, 1, 2).reshape(batch, reduced_time, -1)
+        x = x.reshape(batch, reduced_time, -1)
         
         # ==== Projection =====
-        x = self.projection(x)
+        x = self.layer1(x)
+        x = self.gelu(x)
         
         # ===== RNN =====
         self.rnn.flatten_parameters()
         x, _ = self.rnn(x)
         
         # ===== Classifier =====
-        x = self.classifier(x)
+        x = self.layer_norm(x)
+        x = self.dropout(x)
+        x = self.layer2(x)
         return nn.functional.log_softmax(x.permute(1, 0, 2), dim=2)
 
     def fit(self, test_data: DataLoader, val_data: DataLoader):
@@ -287,7 +291,7 @@ class MorseNet(BaseModel, nn.Module):
                 logits = self(seq)
                 predicted_values = self.__ctc_decoder(logits, 
                                                      self.int_to_char, 
-                                                     self.blank)
+                                                     self.blank_ind)
                 train_predicts.extend(predicted_values)
 
             val_mess = []
@@ -299,7 +303,7 @@ class MorseNet(BaseModel, nn.Module):
                 logits= self(seq)
                 predicted_values = self.__ctc_decoder(logits, 
                                                      self.int_to_char, 
-                                                     self.blank)
+                                                     self.blank_ind)
                 val_predicts.extend(predicted_values)
 
         mean_acc_test = np.mean([Levenshtein.ratio(test_pred, train_mess[ind]) 
@@ -318,12 +322,11 @@ class MorseNet(BaseModel, nn.Module):
     def predict(self, data: DataLoader) -> str:
         """Make prediction for audiofile"""
         with torch.no_grad():
-            for loader in data:
-                seq = loader
-                logits = self(seq)
-                predict = self.__ctc_decoder(logits, 
-                                            self.int_to_char, 
-                                            self.blank)
+            seq, _, _, _ = next(iter(data))
+            logits = self(seq)
+            predict = self.__ctc_decoder(logits, 
+                                        self.int_to_char, 
+                                        self.blank_ind)
         return predict
 
     def save(self, save_name: str) -> None:

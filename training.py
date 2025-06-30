@@ -56,17 +56,23 @@ async def load(link: str = 'https://drive.google.com/file/d/1JuWfEGOHMiV6n934aBW
     Args:
         link: str. Link to loading dataset. The default value is download the prepared data.
     """
-    url = link
-    output_path = 'src_data/data_to_treaning'
-    gdown.download(url, output_path, quiet=False, fuzzy=True)
+    try:
+        url = link
+        output_path = 'src_data/data_to_treaning'
+        gdown.download(url, output_path, quiet=False, fuzzy=True)
+        
+        zip_location = 'src_data/data_to_treaning/morse_dataset.zip'
     
-    zip_location = 'src_data/data_to_treaning/morse_dataset.zip'
- 
-    with zipfile.ZipFile(zip_location, 'r') as zip_ref:
-        zip_ref.extractall()
+        with zipfile.ZipFile(zip_location, 'r') as zip_ref:
+            zip_ref.extractall()
 
-    zip_location.unlink('src_data/data_to_treaning/morse_dataset.zip')
-    
+        zip_location.unlink('src_data/data_to_treaning/morse_dataset.zip')
+    except Exception as ex:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error loading audiofile: {str(ex)}"
+        )
+
 @router_training.post("/fit_inferencet")
 async def fit_inference(audio_path: str):
     dataset = dataset.setup_data(audio_path)

@@ -34,7 +34,7 @@ class MosreDataset(Dataset):
 
         # ===== Init paramemers =====
         self.config = config
-    
+        self.data = None
         # self.data = data
         self.is_validation = is_validation
         self.char_to_int = self.config.char_to_int
@@ -65,29 +65,33 @@ class MosreDataset(Dataset):
         self.data = data
         if isinstance(self.data, pd.DataFrame):
             self.messeges = self.data.message.values
-
+    
     def __len__(self):
-        return len(self.data)
+        if isinstance(self.data, pd.DataFrame):
+            return len(self.data)
+        else: 
+            return 1
     
     def __getitem__(self, index):
-        try:
-            if isinstance(self.data, pd.DataFrame):
-                audio_file = self.audio_paths / self.data.id.values[index]
-            else:
-                audio_file = self.data
+        if self.data is not None:
+            try:
+                if isinstance(self.data, pd.DataFrame):
+                    audio_file = self.audio_paths / self.data.id.values[index]
+                else:
+                    audio_file = self.data
 
-            waveform, sample_rate = torchaudio.load(audio_file)
-            augmented_spectrogram = self._transforms(waveform)
-            if self.is_validation:
-                message = self.messeges[index]
-                target = torch.tensor([self.char_to_int[char] for char in message], 
-                                    dtype=torch.long)
-                target_len = torch.tensor(len(target), dtype=torch.long)
-                return augmented_spectrogram, target, target_len, message
-            else:
-                return augmented_spectrogram, None, None, None
-        except Exception as ex:
-            print(str(ex))
+                waveform, sample_rate = torchaudio.load(audio_file)
+                augmented_spectrogram = self._transforms(waveform)
+                if self.is_validation:
+                    message = self.messeges[index]
+                    target = torch.tensor([self.char_to_int[char] for char in message], 
+                                        dtype=torch.long)
+                    target_len = torch.tensor(len(target), dtype=torch.long)
+                    return augmented_spectrogram, target, target_len, message
+                else:
+                    return augmented_spectrogram, None, None, None
+            except Exception as ex:
+                print(str(ex))
 
 
 def __my_collate(batch,padding_value):
@@ -109,10 +113,10 @@ def __my_collate(batch,padding_value):
         msg = [item[3] for item in batch]
         return [spectrograms_padded, target, label_len, msg]
     else: 
-        return spectrograms_padded
+        return spectrograms_padded, None, None, None
     
 
-def data_to_inference(data:MosreDataset, config: Config) -> DataLoader:
+def data_to_inference(data:Union[str, pd.DataFrame],dataset, config: Config) -> DataLoader:
     """
     Converts data into inference DataLoaders.
         
@@ -124,13 +128,14 @@ def data_to_inference(data:MosreDataset, config: Config) -> DataLoader:
         Returns:
             inference dataloared
     """
-    callate = partial(__my_collate, config.data.blank_char)
-    dataloared = DataLoader(data, 
+    dataset.setup_data(data)
+    callate = partial(__my_collate,padding_value=config.blank_ind)
+    dataloared = DataLoader(dataset, 
                             # batch_size=config.data.batch_size, 
                             batch_size=1, 
                             shuffle = False, 
-                            collate_fn=callate)
-
+                            collate_fn=callate,
+                            num_workers=0)
     return dataloared 
 
 

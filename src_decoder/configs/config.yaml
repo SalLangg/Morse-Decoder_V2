@@ -1,17 +1,18 @@
 data:
-  sample_rate: 8000                         # Частота дискретизации
-  n_mels: 128                               # Количество Mel-фильтров
-  n_fft: 400                                # Размер окна FFT
-  hop_length: 180                           # Шаг между FFT окнами
-  top_db: 80                                # Максимальная громкость в dB
-  freq_mask: 15                             # FrequencyMasking спектрограмм
-  time_mask: 20                             # TimeMasking спектрограмм
-  blank_char: "_"                           # Символ CTC blank
-  audio_dir: "morse_dataset/morse_dataset"  # Директория с аудиофайлами
-  audio_save_dir: "morse_dataset/morse_dataset"   # Директория для сохраниниея загруженых аудиофайлов
-  train_csv: "morse_dataset/train.csv"      # Путь к тренировочным данным
-  test_csv: "morse_dataset/test.csv"        # Путь к тестовым данным
-  val_size: 0.15                            # Размер валидационной выборки
+  sample_rate: 8000                                           # Частота дискретизации
+  n_mels: 128                                                 # Количество Mel-фильтров
+  n_fft: 400                                                  # Размер окна FFT
+  hop_length: 180                                             # Шаг между FFT окнами
+  top_db: 80                                                  # Максимальная громкость в dB
+  freq_mask: 15                                               # FrequencyMasking спектрограмм
+  time_mask: 20                                               # TimeMasking спектрограмм
+  blank_char: "_"                                             # Символ CTC blank
+  morsealph: ' АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ1234567890#'   # Алфалит декодирования
+  audio_dir: "morse_dataset/morse_dataset"                    # Директория с аудиофайлами
+  audio_save_dir: "morse_dataset/morse_dataset"               # Директория для сохраниниея загруженых аудиофайлов
+  train_csv: "morse_dataset/train.csv"                        # Путь к тренировочным данным
+  test_csv: "morse_dataset/test.csv"                          # Путь к тестовым данным
+  val_size: 0.15                                              # Размер валидационной выборки
   batch_size: 64
   seed: 42
   
