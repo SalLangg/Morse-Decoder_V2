@@ -158,15 +158,6 @@ def data_to_training(df: pd.DataFrame, data: MosreDataset, config: Config):
     batch_size = config.data.batch_size
     seed  = config.data.seed
 
-    if not (0 < val_size < 1):
-        raise ValueError(f"Invalid validation size: {val_size}. Must be between 0 and 1")
-        
-    if batch_size <= 0:
-        raise ValueError(f"Invalid batch size: {batch_size}. Must be positive")
-    
-    if seed <= 0:
-        raise ValueError(f"Invalid batch size: {seed}. Must be positive")
-    
     train_dataframe, val_dataframe = train_test_split(data, 
                                                         test_size=val_size, 
                                                         random_state=seed)

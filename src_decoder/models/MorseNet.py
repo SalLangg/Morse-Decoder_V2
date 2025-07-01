@@ -45,7 +45,6 @@ class MorseNet(nn.Module, BaseModel):
         self.lr = self.conf.lr
         
         self.name_to_save = name_to_save
-        
         self.name_to_load = name_to_load
         # ===== CNN =====
         self.net_conv = nn.Sequential(
@@ -144,7 +143,7 @@ class MorseNet(nn.Module, BaseModel):
             preds.append(text)
 
         return preds
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # ===== CNN =====
         x = self.net_conv(x)
@@ -199,8 +198,8 @@ class MorseNet(nn.Module, BaseModel):
                                            targets, 
                                            predict_lengths, 
                                            targets_lens.reshape(N))
-                except RuntimeError:
-                    # print(predict.shape, targets.shape, predict_lengths, targets_lens.reshape(N))
+                except RuntimeError as re:
+                    print(str(re))
                     continue
 
                 if torch.isnan(loss) or torch.isinf(loss): 
@@ -252,12 +251,6 @@ class MorseNet(nn.Module, BaseModel):
             grad_norms = [param.grad.norm().item() 
                           for param in self.parameters() 
                           if param.grad is not None]
-            # if grad_norms:
-            #     print(f'Mean grad norm: {np.mean(grad_norms):.6f}')
-            #     print(f'Max grad norm: {np.max(grad_norms):.6f}')
-            #     print(f'Min grad norm: {np.min(grad_norms):.6f}')
-            # else:
-            #     print('No gradients computed yet.')
 
             #===== Information about the training step and loss data =====
             current_lr = self._optimizer.param_groups[0]['lr']
@@ -315,8 +308,6 @@ class MorseNet(nn.Module, BaseModel):
                'valid': mean_acc_val
                }
         return out
-        # print(f'Mean accurasu by The Levenshtein in train is : {mean_acc_test}')
-        # print(f'Mean accurasu by The Levenshtein in validate is : {mean_acc_val}')
 
 
     def predict(self, data: DataLoader) -> str:

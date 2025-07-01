@@ -23,6 +23,7 @@ router_inference = APIRouter(
 
 LOAD_AUDIO_DIR = Path('src_data/loaded_audio')
 
+
 class TreaningStartup():
     def __init__(self):
         self.conf = None
@@ -32,15 +33,17 @@ class TreaningStartup():
 
 test_startup = TreaningStartup()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Initialization at server startup.
 
-    Heavy initialization MosreDataset only on start. When requested, 
-    only a light init a data.
+    Heavy initialization MosreDataset only on start. 
+    When requested, only a light init a data.
     """
     test_startup.conf = config.load_config(base=True)
+    print('MorseNet - initializing model')
     test_startup.model = MorseNet(config=test_startup.conf)
     test_startup.model.load()
     test_startup.model.eval()
@@ -49,7 +52,7 @@ async def lifespan(app: FastAPI):
                            is_validation=False)
     
     total_params = sum(p.numel() for p in test_startup.model.parameters() if p.requires_grad)    
-    print(f'\nMorseNet - инициалицация модели. Число обучаемых параметров: {total_params:,}')
+    print(f'\nMorseNet - Number of parameters to be trained: {total_params:,}')
     yield
 
 
@@ -81,29 +84,6 @@ async def load_audio(file: UploadFile = File(...)):
             detail=f"Error loading file: {str(e)}"
         )
 
-
-# @router_inference.delete("/delete_{file_name}", summary="Delete file")
-# async def delet_file(file_name: str):
-#     """
-#     Delete file by name
-#     """
-#     try:
-#         file_location = Path.joinpath(LOAD_AUDIO_DIR, file_name)
-#         file_location.unlink()
-        
-#         return JSONResponse(
-#             status_code=200,
-#             content={"message": "File deleted successfully", 
-#                      "file name": file_name, 
-#                      "path": str(file_location)}
-#         )
-    
-#     except Exception as e:
-#         raise HTTPException(
-#             status_code=500,
-#             detail=f"Error deleting file: {str(e)}"
-#         )
-    
 
 @router_inference.delete("/delete_all", summary="Delete all files")
 async def delet_file():
@@ -152,7 +132,6 @@ async def predict():
         dataloader = data_to_inference(data=audio_path, 
                                        dataset=test_startup.dataset, 
                                        config=test_startup.conf)
-        # print(next(iter(dataloader)))
         return test_startup.model.predict(dataloader)
     
     except Exception as ex:

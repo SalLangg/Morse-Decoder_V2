@@ -1,3 +1,4 @@
 morse_dataset/
 Morse_decoder_V2/
-Попытки 1.0/
+__pycache__/
+src_data/morse_dataset/

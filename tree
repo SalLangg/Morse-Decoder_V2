@@ -1,0 +1,26 @@
+morse_decoder/
+├── notebooks/
+│   ├── ...                 #Все неудачные попытки и чеклист исправлений
+├── src_dara/             
+|   ├── data_to_treaning/   # Данные что будут использоваться для тренировки моделей на сервере
+|   ├── saved_models/
+|   |   ├── MorseNet.pth    # Базовая модель MorseNet
+|   ├── *morse_dataset/     # Базовый датасет на котором обучалась модель MorseNet  
+|   |   ├── morse_dataset
+|   |   ├── test.csv  
+|   |   ├── train.csv  
+├── src_decoder/
+|   ├── ad-test?/           # Конфигурационные файлы
+|   ├── configs/            # Конфигурационные файлы
+|   │   ├── config.yaml     # Параметры для тестирования моделей
+|   │   ├── config.py       # Базовые значеня параметров
+│   ├── data/                 
+│   │   ├── dataset.py      # Класс Dataset
+│   ├── models/
+│   │   ├── BaseModel.py    # базовый класс моделей
+│   │   ├── MorseNet.py     # Архитектура основной модели MorseNet
+├── README.md
+├── requirements.txt        
+├── train.py                # FastAPI router to train and inference a new models
+├── inference.py            # FastAPI router to MorseNet inference
+├── main.py                 # Точка входа в FastAPI
