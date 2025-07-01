@@ -60,7 +60,7 @@ MorseNet использует гибридную архитектуру:
 | Компонент               | Описание                       | Ресурсы |
 |-------------------------|--------------------------------|--------|
 | **Adam**                |Оптимизатор    | [Adam](https://docs.pytorch.org/docs/stable/generated/torch.optim.Adam.html#torch.optim.Adam) |
-| **ReduceLROnPlateau**   | Метод уменьшения шага обучения | [ReduceLROnPlateau](https://pytorch.org/docs/stable/optim.html#torch.optim.lr_scheduler.ReduceLROnPlateau) |
+| **ReduceLROnPlateau**   | Метод уменьшения шага обучения | [ReduceLROnPlateau](https://docs.pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.ReduceLROnPlateau.html#torch.optim.lr_scheduler.ReduceLROnPlateau) |
 | **CTC**  | Функция потерь| [CTC architectures](https://huggingface.co/learn/audio-course/en/chapter3/ctc)   · [CTC loss](https://github.com/shouxieai/CTC_loss_pytorch?tab=readme-ov-file) |
 ```
   # Функция потерь
