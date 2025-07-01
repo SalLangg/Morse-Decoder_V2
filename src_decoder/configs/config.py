@@ -66,7 +66,7 @@ def load_config(config_path: str = 'config.yaml', base=False) -> Config:
     '''Load config
     
     Parameters: 
-        config_path: srt -> 
+        config_path: srt
         base: bool -> use/unuse yaml values
     '''
     if base:
