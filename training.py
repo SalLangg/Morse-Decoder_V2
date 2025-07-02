@@ -73,11 +73,6 @@ async def load(link: str = 'https://drive.google.com/file/d/1JuWfEGOHMiV6n934aBW
             detail=f"Error loading audiofile: {str(ex)}"
         )
 
-@router_training.post("/fit_inferencet")
-async def fit_inference(audio_path: str):
-    dataset = dataset.setup_data(audio_path)
-    dataloader = data_to_inference(dataset, config=conf)
-
 @router_training.post("/fit")
 async def fir(audio_path):
     if not isinstance(audio_path, pd.DataFrame):
@@ -88,4 +83,7 @@ async def fir(audio_path):
     dataset = dataset.setup_data(audio_path)
     dataloader = data_to_training(dataset, config=conf)
     
-    
+@router_training.post("/fit_inference")
+async def fit_inference(audio_path: str):
+    dataset = dataset.setup_data(audio_path)
+    dataloader = data_to_inference(dataset, config=conf)
