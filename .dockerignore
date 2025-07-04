@@ -1,0 +1,12 @@
+morse_dataset/
+Morse_decoder_V2/
+__pycache__/
+src_data/morse_dataset/
+__pycache__/
+mlruns/
+notebooks/
+*.rar
+*.ipynb
+.gitignore
+*.png
+*.md
