@@ -14,8 +14,8 @@ from functools import partial
 class MosreDataset(Dataset):
     def __init__(self,
                  w_type: Literal['inference', 'training'],
-                 config: Config = None,
-                 is_validation=False):
+                 audio_path: str= 'src_data/morse_dataset/morse_dataset',
+                 config: Config = None):
         """
         Dataset by Morse decoder.
         
@@ -33,10 +33,10 @@ class MosreDataset(Dataset):
         """
 
         # ===== Init paramemers =====
+        self.w_type = w_type
         self.config = config
         self.data = None
         # self.data = data
-        self.is_validation = is_validation
         self.char_to_int = self.config.char_to_int
         self.config = self.config.data
 
@@ -49,22 +49,25 @@ class MosreDataset(Dataset):
             ]
         
         # ===== Init transformations for spectrogram =====
-        if w_type == 'training':
+        if self.w_type == 'training':
             self._transforms = nn.Sequential(
                 *self._transforms,
                 transforms.FrequencyMasking(freq_mask_param=self.config.freq_mask),
                 transforms.TimeMasking(time_mask_param=self.config.time_mask),
                 )
 
-            self.audio_paths = self.config.audio_dir
-            self.messeges = self.data.message.values
+            # self.audio_paths = audio_path
+            # self.messeges = self.data.message.values
         else:
             self._transforms = nn.Sequential(*self._transforms)
 
-    def setup_data(self, data: Union[str, pd.DataFrame]):
+    def setup_data(self, data: Union[str, pd.DataFrame], 
+                   audio_path: str= 'src_data/morse_dataset/morse_dataset'):
         self.data = data
         if isinstance(self.data, pd.DataFrame):
             self.messeges = self.data.message.values
+            self.audio_paths = audio_path
+
     
     def __len__(self):
         if isinstance(self.data, pd.DataFrame):
@@ -76,13 +79,13 @@ class MosreDataset(Dataset):
         if self.data is not None:
             try:
                 if isinstance(self.data, pd.DataFrame):
-                    audio_file = self.audio_paths / self.data.id.values[index]
+                    audio_file = Path(self.audio_paths) / self.data.id.values[index]
                 else:
                     audio_file = self.data
 
                 waveform, sample_rate = torchaudio.load(audio_file)
                 augmented_spectrogram = self._transforms(waveform)
-                if self.is_validation:
+                if self.w_type == 'training':
                     message = self.messeges[index]
                     target = torch.tensor([self.char_to_int[char] for char in message], 
                                         dtype=torch.long)
@@ -129,9 +132,8 @@ def data_to_inference(data:Union[str, pd.DataFrame],dataset, config: Config) -> 
             inference dataloared
     """
     dataset.setup_data(data)
-    callate = partial(__my_collate,padding_value=config.blank_ind)
-    dataloared = DataLoader(dataset, 
-                            # batch_size=config.data.batch_size, 
+    callate = partial(__my_collate, padding_value=config.blank_ind)
+    dataloared = DataLoader(dataset,
                             batch_size=1, 
                             shuffle = False, 
                             collate_fn=callate,
@@ -139,7 +141,7 @@ def data_to_inference(data:Union[str, pd.DataFrame],dataset, config: Config) -> 
     return dataloared 
 
 
-def data_to_training(df: pd.DataFrame, data: MosreDataset, config: Config):
+def data_to_training(df: pd.DataFrame, config: Config):
     """
     Converts data into training and validation DataLoaders.
         
@@ -158,18 +160,26 @@ def data_to_training(df: pd.DataFrame, data: MosreDataset, config: Config):
     batch_size = config.data.batch_size
     seed  = config.data.seed
 
-    train_dataframe, val_dataframe = train_test_split(data, 
+    train_dataframe, val_dataframe = train_test_split(df, 
                                                         test_size=val_size, 
                                                         random_state=seed)
+    train_ds = MosreDataset(w_type="training", 
+                           config=config)
     
-    callate = partial(__my_collate, config.data.blank_char)
-    t_dataloader = DataLoader(train_dataframe, 
+    val_ds = MosreDataset(w_type="training", 
+                           config=config)
+    
+    train_ds.setup_data(train_dataframe)
+    val_ds.setup_data(val_dataframe)
+
+    callate = partial(__my_collate, padding_value=config.blank_ind)
+    t_dataloader = DataLoader(train_ds, 
                             batch_size=batch_size, 
                             shuffle=True, 
                             collate_fn=callate, 
                             drop_last=True)
 
-    val_dataloader = DataLoader(val_dataframe, 
+    val_dataloader = DataLoader(val_ds, 
                         batch_size=batch_size, 
                         shuffle=True, 
                         collate_fn=callate, 

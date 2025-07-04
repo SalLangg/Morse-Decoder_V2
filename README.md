@@ -121,36 +121,8 @@ MorseNet использует гибридную архитектуру:
 ```
 
  ##🔍 Ключевые компоненты
- 1. Конфигурация (`config.py`)
-   ```
-   class Config(BaseModel):
-       data: DataConfig = DataConfig() - Инициализация базовых параметров датасета
-       model: ModelConfig = ModelConfig() - Инициализация базовых параметров модели
-       ...
-   #===== Создание экземпляра файла конфигурации на основе базовых/пользовательских гиперпараметров =====
-   def load_config(config_path: str = 'config.yaml', base=False) -> Config: 
-       if base:
-           return Config()
-       else:
-           with open(Path(__file__).parent / config_path) as f:
-               raw_config = yaml.safe_load(f)
-           return Config(**raw_config)
-   ```
-2. Инициализация базовой модели MorseNet и MosreDataset для ускорения декодирования в реальном вермени.(`inference.py/lifespan`)
-```
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    test_startup.conf = config.load_config(base=True)
-    print('MorseNet - initializing model')
-    test_startup.model = MorseNet(config=test_startup.conf)
-    test_startup.model.load()
-    test_startup.model.eval()
-    test_startup.dataset = MosreDataset(w_type='inference', 
-                           config=test_startup.conf, 
-                           is_validation=False)
-    
-    total_params = sum(p.numel() for p in test_startup.model.parameters() if p.requires_grad)    
-    print(f'\nMorseNet - Number of parameters to be trained: {total_params:,}')
-    yield
-```
-3. 
+1. Инициализация базовых гиперпараметров и базовых классов MorseNet и MosreDataset на старте сервера для ускорения декодирования в реальном вермени.(`inference.py/lifespan`)
+2. Возможность для дообучения/переобучения загружать свой набора гиперпараметров, изолированно от инференса(`config.py`)
+3. Дообучение/переобучение напрямую на сервере, с возможностью загрузки подготовыленных данных на сервер по ссылки Google Drive.
+4. Логирование обучения и тренировочного инференса в MLFlow.
+5. Возможность загрузить обновленную модель в инференс без перезагрузки сервера. Достаточно заменить файл .pkl и загрузить новую модель.

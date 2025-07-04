@@ -21,7 +21,7 @@ router_inference = APIRouter(
     responses={404: {"description": "Not found"}}
 )
 
-LOAD_AUDIO_DIR = Path('src_data/loaded_audio')
+LOAD_AUDIO_DIR = Path("src_data/loaded_audio")
 
 
 class TreaningStartup():
@@ -35,7 +35,7 @@ test_startup = TreaningStartup()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def inference_lifespan(app: FastAPI):
     """
     Initialization at server startup.
 
@@ -43,20 +43,19 @@ async def lifespan(app: FastAPI):
     When requested, only a light init a data.
     """
     test_startup.conf = config.load_config(base=True)
-    print('MorseNet - initializing model')
+    print("MorseNet - initializing model")
     test_startup.model = MorseNet(config=test_startup.conf)
     test_startup.model.load()
     test_startup.model.eval()
-    test_startup.dataset = MosreDataset(w_type='inference', 
-                           config=test_startup.conf, 
-                           is_validation=False)
+    test_startup.dataset = MosreDataset(w_type="inference", 
+                           config=test_startup.conf)
     
     total_params = sum(p.numel() for p in test_startup.model.parameters() if p.requires_grad)    
-    print(f'\nMorseNet - Number of parameters to be trained: {total_params:,}')
+    print(f"\nMorseNet - Number of parameters to be trained: {total_params:,}")
     yield
 
 
-@router_inference.post("/load", summary="Load audiofile")
+@router_inference.post("/load_audiofile", summary="Load audiofile")
 async def load_audio(file: UploadFile = File(...)):
     """
     Upload a file for training the models to server
@@ -93,11 +92,12 @@ async def delet_file():
     print(LOAD_AUDIO_DIR)
     try:
         files_to_del = LOAD_AUDIO_DIR.iterdir()
-        print(files_to_del)
+
         file_names = []
         for file in files_to_del:
-            file_names.append(file.name)
-            file.unlink()
+            if file.name != ".gitkeep":
+                file_names.append(file.name)
+                file.unlink()
         
         return JSONResponse(
             status_code=200,
@@ -140,3 +140,6 @@ async def predict():
             detail=f"Prediction failed: {str(ex)}"
         )
     
+@router_inference.post("/upload_model", summary="Upload a new trained model")
+async def upload(name):
+    test_startup.model.load()

@@ -9,6 +9,7 @@ import gdown
 import patoolib
 import os
 from pathlib import Path
+import subprocess
 
 import torch
 import torchaudio
@@ -27,25 +28,37 @@ class TreaningStartup():
         self.dataset = None
         self.audio_path = None
 
-        self.extract_dir = 'src_data'
+        self.extract_dir = "src_data"
         self.extracted_folder = None
         self.full_path = None
         self.test_csv_path = None
         self.train_csv_path = None
 
 
+@asynccontextmanager
+async def training_lifespan(app: FastAPI):
+    subprocess.Popen(
+        ["mlflow", "ui", "--backend-store-uri", "mlruns", "--port", "5001"]
+        # ["mlflow", "ui", "--backend-store-uri", "--port", "5001"]
+        )
+    print("MLflow UI started at http://127.0.0.1:5001")
+
+    yield
+
 def get_extracted(extract_dir):
     extracted_folder = None
-    for item in os.listdir(extract_dir):
-        item_path = os.path.join(extract_dir, item)
-        if os.path.isdir(item_path):
-            extracted_folder = item
+    for item in Path(extract_dir).iterdir():
+        if 'dataset' in item.name:
+            extracted_folder = item.name
             break
-
+    
+    extract_dir = Path(extract_dir)
     train_startup.extracted_folder = Path(extracted_folder)
     train_startup.full_path = Path.joinpath(extract_dir, extracted_folder)
+    train_startup.audio_path = Path.joinpath(extract_dir, extracted_folder, extracted_folder)
     train_startup.test_csv_path = Path.joinpath(extract_dir, extracted_folder,"test.csv")
     train_startup.train_csv_path = Path.joinpath(extract_dir, extracted_folder,"train.csv")
+    print(train_startup.full_path, train_startup.audio_path,train_startup.test_csv_path,train_startup.train_csv_path)
 
     if not extracted_folder:
         raise HTTPException(
@@ -62,32 +75,35 @@ router_training = APIRouter(
 train_startup = TreaningStartup()
 
 
-@router_training.post("/init", summary='Initialization dase models')
-async def init():
+@router_training.post("/init", summary="Initialization dase models")
+async def init(name):
     """
-    Initialization at server startup.
+    Methods initialization at server.
 
-    Heavy initialization MosreDataset only on start. When requested, 
-    only a light init a data.
+    Arg:
+        name - name treaning model. It will be used when saving the model.
     """
     train_startup.conf = config.load_config(base=False)
-    print('MorseNet - initializing model')
-    train_startup.model = MorseNet(config=train_startup.conf)
+    print("MorseNet to train - initializing model")
+    train_startup.model = MorseNet(config=train_startup.conf, name_to_save=name)
     train_startup.model.load()
-    train_startup.dataset = MosreDataset(w_type='inference', 
-                           config=train_startup.conf, 
-                           is_validation=False)
+    # train_startup.dataset = MosreDataset(w_type="training", 
+    #                        config=train_startup.conf, 
+    #                        is_validation=False)
     
     total_params = sum(p.numel() for p in train_startup.model.parameters() if p.requires_grad)    
-    print(f'\nMorseNet - Number of parameters to be trained: {total_params:,}')
+    print(f"\nMorseNet to train  - Number of parameters to be trained: {total_params:,}")
 
     extract_dir = train_startup.extract_dir
     get_extracted(extract_dir=extract_dir)
-    print('File patchs were initialized')
+    return JSONResponse(
+        status_code=200,
+        content="Initialization was completed successfully"
+    )
 
 
-@router_training.put("/loading_data", summary='Data loading with google drive by link')
-async def load_data(url: str = 'https://drive.google.com/file/d/1JuWfEGOHMiV6n934aBWiHocZhtRmyVG-/view?usp=sharing'):
+@router_training.put("/loading_data", summary="Data loading with google drive by link")
+async def load_data(url: str = "https://drive.google.com/file/d/1JuWfEGOHMiV6n934aBWiHocZhtRmyVG-/view?usp=sharing"):
     """Data with google drive is base dataset to model treaning with a base structure:
         ├── file_name/
             ├── file_name - data to train
@@ -97,9 +113,9 @@ async def load_data(url: str = 'https://drive.google.com/file/d/1JuWfEGOHMiV6n93
     Args:
         url: str. Link to loading dataset. The default value is download the prepared data.
     """
-    file_id = re.search(r'/d/([^/]+)', url).group(1)
-    url = f'https://drive.google.com/uc?id={file_id}&export=download'
-    output = 'src_data/morse_dataset.rar'
+    file_id = re.search(r"/d/([^/]+)", url).group(1)
+    url = f"https://drive.google.com/uc?id={file_id}&export=download"
+    output = "src_data/morse_dataset.rar"
     gdown.download(url, output, quiet=False)
 
     extract_dir = train_startup.extract_dir
@@ -109,7 +125,7 @@ async def load_data(url: str = 'https://drive.google.com/file/d/1JuWfEGOHMiV6n93
     try:
         get_extracted(extract_dir=extract_dir)
 
-        patoolib.extract_archive(output, outdir='src_data')
+        patoolib.extract_archive(output, outdir="src_data")
 
         return JSONResponse(
             status_code=200,
@@ -121,35 +137,62 @@ async def load_data(url: str = 'https://drive.google.com/file/d/1JuWfEGOHMiV6n93
         )
     
 
-@router_training.post("/load_{model_name}", summary='Load model')
+@router_training.post("/load_{model_name}", summary="Load model")
 async def load_model(model_name: str):
     """
     Loading model by name
     """
-    train_startup.model.load(name=model_name)
-
     if train_startup.model is None:
         raise HTTPException(
             status_code=400,
             detail=f"MorseNet model is't loaded"
         )
+    
+    train_startup.model.load(name=model_name)
 
+
+# @router_training.get("/start_mlfow")
+# def start_mlflow_ui():
+#     try:
+#         subprocess.Popen(
+#             ["mlflow", "ui", "--backend-store-uri", "mlruns", "--port", "5001"]
+#             )
+#         return JSONResponse(
+#             status_code=200,
+#             content={"message": "MLflow UI started at http://localhost:5001"})
+#     except Exception as ex:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=f"MLflow starting error: {str(ex)}"
+#         )
+    
 
 @router_training.post("/fit")
 async def fit():
-    f_patch = train_startup.test_csv_path
+    f_patch = train_startup.train_csv_path
     if f_patch is None:
         raise HTTPException(
             status_code=400,
             detail=f"File patchs not initialized. Use /init"
         )
     
-    train_data = pd.read_csv(f_patch)
+    train_df = pd.read_csv(f_patch)
 
-    dataset = dataset.setup_data(train_data)
-    dataloader = data_to_training(dataset, config=train_startup.conf)
+    # dataset = train_startup.dataset.setup_data(train_df, train_startup.audio_path)
+    train_loader, val_loader = data_to_training(df=train_df,
+                                           config=train_startup.conf)
     
+    model = train_startup.model
+    model.fit(thain_data=train_loader, val_data=val_loader)
+    # print(len(train_loader), next(iter(train_loader)))
+
 @router_training.post("/fit_inference")
 async def fit_inference(audio_path: str):
+    model_name = train_startup.model.name
+    if model_name is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Modet is't load to treaning inference. Use /init -> /start_mlfow -> /fit"
+        )
     dataset = dataset.setup_data(audio_path)
     dataloader = data_to_inference(dataset, config=train_startup.conf)

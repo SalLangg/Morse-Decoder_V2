@@ -6,7 +6,7 @@ from typing import Tuple, Optional, Union, Dict, List
 from torch.utils.tensorboard import SummaryWriter
 
 
-class BaseModel(ABC):
+class BaseMLModel(ABC):
     """Abstract base class for models"""
     @property
     def device(self) -> torch.device:
