@@ -276,9 +276,9 @@ class MorseNet(nn.Module,BaseMLModel):
                     break
 
                 # Log to Mlflow
-                mlflow.log_metric("Mean grad norm", np.mean(grad_norms) * 100, step=epoch)
-                mlflow.log_metric("Max grad norm", np.max(grad_norms) * 100, step=epoch)
-                mlflow.log_metric("Mean grad norm", np.min(grad_norms) * 100, step=epoch)
+                mlflow.log_metric("Mean grad norm", np.mean(grad_norms), step=epoch)
+                mlflow.log_metric("Max grad norm", np.max(grad_norms), step=epoch)
+                mlflow.log_metric("Mean grad norm", np.min(grad_norms), step=epoch)
                 mlflow.log_metric("Train_loss", train_loss, step=epoch)
                 mlflow.log_metric("Val_loss", total_val, step=epoch)
                 mlflow.log_metric("Learning_rate", current_lr, step=epoch)
